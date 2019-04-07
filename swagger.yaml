@@ -54,20 +54,7 @@ paths:
         content:
           application/json:
             schema:
-              type: array
-              example: [  [1, 3, 4],
-                          [0, 2, 3, 4, 5],
-                          [1, 4, 5],
-                          [0, 1, 4, 6, 7],
-                          [0, 1, 2, 3, 5, 6, 7, 8],
-                          [1, 2, 4, 7, 8],
-                          [3, 4, 7],
-                          [3, 4, 5, 6, 8],
-                          [4, 5, 7] ]
-              items:
-                type: array
-                items:
-                  type: integer
+              $ref: '#/components/schemas/CreateMap'
       responses:
         '201':
           description: Upload map successful.
@@ -116,6 +103,12 @@ paths:
       tags:
         - session
       summary: create a new minesweeper game session.
+      operationId: createGame
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGame'
       responses:
         '201':
           description: create new game session successful.
@@ -136,6 +129,7 @@ paths:
       tags:
         - session
       summary: get info about the game.
+      operationId: getGameById
       parameters: 
         - in: path
           name: id
@@ -149,7 +143,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameSession'
+                $ref: '#/components/schemas/GameInfo'
         '404':
           description: game not found.
 
@@ -160,6 +154,7 @@ paths:
       tags:
         - session
       summary: represent user opening a minesweeper field.
+      operationId: openTile
       parameters: 
         - in: path
           name: id
@@ -175,7 +170,7 @@ paths:
           description: tile index from the map to be opened.
       responses:
         '200':
-          description: return a pair of index and value of the tiles that are opened. 
+          description: return list of index-value pair of opened tiles. 
           content:
             application/json:
               schema:
@@ -196,6 +191,67 @@ components:
       name: TOPOMS-API-KEY
       description: Api key obtained at game creation.
   schemas:
+    CreateMap:
+      type: array
+      example: [  [1, 3, 4],
+                  [0, 2, 3, 4, 5],
+                  [1, 4, 5],
+                  [0, 1, 4, 6, 7],
+                  [0, 1, 2, 3, 5, 6, 7, 8],
+                  [1, 2, 4, 7, 8],
+                  [3, 4, 7],
+                  [3, 4, 5, 6, 8],
+                  [4, 5, 7] ]
+      items:
+        type: array
+        items:
+          type: integer
+    CreateGame:
+      type: object
+      properties:
+        numberOfMines:
+          type: integer
+          example: 2
+        mapId:
+          type: string
+          example: 7640111f
+    GameInfo:
+      type: object
+      required:
+        - createdAt
+        - mapId
+        - numberOfMines
+        - numberOfTiles
+        - revealedTiles
+        - status
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+          example: '2017-07-21T17:32:28Z'
+        endedAt:
+          type: string
+          format: date-time
+          example: '2017-07-21T17:32:28Z'
+        mapId:
+          type: string
+          example: 7640111f
+        numberOfMines:
+          type: integer
+          example: 2
+        numberOfTiles:
+          type: integer
+          example: 9
+        revealedTiles:
+          type: array
+          example: [[0, 0], [1, 1], [3, 1], [4, 1]]
+          items:
+            type: array
+            items:
+              type: integer
+        status:
+          type: string
+          enum: [started, playing ,lose, win]
     OpenTile:
       type: object
       required:
@@ -212,53 +268,3 @@ components:
             type: array
             items:
               type: integer
-    CreateMap:
-      type: array
-      items:
-        type: array
-        items:
-          type: integer
-    CreateGame:
-      type: object
-      properties:
-        numberOfMines:
-          type: integer
-        
-    GameSession:
-      type: object
-      required:
-        - createdAt
-        - mapId
-        - numberOfMines
-        - numberOfTiles
-        - revealedTiles
-        - status
-      properties:
-        createdAt:
-          type: string
-          format: date-time
-          example: 2017-07-21T17:32:28Z
-        endedAt:
-          type: string
-          format: date-time
-          example: 2017-07-21T17:32:28Z
-        mapId:
-          type: string
-          example: asdf9kjldf72
-        numberOfMines:
-          type: integer
-          example: 64
-        numberOfTiles:
-          type: integer
-          example: 9
-        revealedTiles:
-          type: array
-          example: [[0, 1], [1, 5], [3, 4]]
-          items:
-            type: array
-            items:
-              type: integer
-        status:
-          type: string
-          enum: [started, playing ,lose, win]
-
