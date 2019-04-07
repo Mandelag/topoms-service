@@ -1,0 +1,264 @@
+openapi: 3.0.0
+# Added by API Auto Mocking Plugin
+servers:
+  - description: Topo Minesweeper
+    url: https://virtserver.swaggerhub.com/Mandelag/topoms/1.0.0
+info:
+  description: |
+    This services manages minesweeper maps and game session state. 
+    
+    Maps are template in which we could create the game session. It could be the classic representation of 8x8, 16x16, 24x24 minesweeper grid. It could also be a graph of any form (topology), eg. hexagonal grid, octagonal grid, or administrative border of a country.
+    
+    Game session is what contains the minesweeper game logic and user states.
+    
+    To use this service, follow these steps:
+    1. Create a map by hitting __/maps__ endpoint and store the *map id*. The map will be cached in the server and accessible by their *map id*.
+    2. Create a game session by hitting the __/game__ endpoint and specifying a *map id*.
+    3. Store the *game session id* and *auth token* returned by step 2. The two will be used to operate the game.
+    4. Start playing the game by hitting the __/game/(YOUR GAME SESSION ID)/open__ endpoint to open the minesweeper tile.
+    
+    
+  version: "1.0.0"
+  title: Topo Minesweeper API
+  contact:
+    email: keenan.gebze@gmail.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+paths:
+  /maps:
+    put:
+      operationId: uploadMap
+      tags:
+        - maps selection
+      summary: create (upload) a map and cache it in server.
+      description: |
+        Maps represent a connectivity matrix between nodes in an array or a list. It is represented in json as a two-dimensional array of integer. 
+        
+        For example, a list of
+        -  [1, 3, 4]                 (index 0)
+        -  [0, 2, 3, 4, 5],
+        -  [1, 4, 5],
+        -  [0, 1, 4, 6, 7],
+        -  [0, 1, 2, 3, 5, 6, 7, 8],
+        -  [1, 2, 4, 7, 8],
+        -  [3, 4, 7],
+        -  [3, 4, 5, 6, 8],
+        -  [4, 5, 7]                  (index 8)
+
+        represents a connectivity matrix of a 9 node graph. It gives information that node 0 is connected to node 1, 3, and 4; node 1 to node 0, 2, 3, 4, and 5; etc.
+        
+        The response is *map id*, which is the hashcode of the connectivity matrix.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              example: [  [1, 3, 4],
+                          [0, 2, 3, 4, 5],
+                          [1, 4, 5],
+                          [0, 1, 4, 6, 7],
+                          [0, 1, 2, 3, 5, 6, 7, 8],
+                          [1, 2, 4, 7, 8],
+                          [3, 4, 7],
+                          [3, 4, 5, 6, 8],
+                          [4, 5, 7] ]
+              items:
+                type: array
+                items:
+                  type: integer
+      responses:
+        '201':
+          description: Upload map successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: the id of the map
+                    example: 7640111f
+        '409':
+          description: Cached map exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: the id of the map
+                    example: 7640111f
+  /maps/{id}:
+    get:
+      tags:
+        - maps selection
+      summary: get cached minesweeper maps from server.
+      operationId: getMapById
+      description: |
+        Check wether the minesweeper map is already cached in the server.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: The id of the map. The id is calculated using the map hashcode.
+      responses:
+        '200':
+          description: cached maps exist.
+        '404':
+          description: cached maps doesn't exist.
+  /games:
+    put:
+      tags:
+        - session
+      summary: create a new minesweeper game session.
+      responses:
+        '201':
+          description: create new game session successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: g4m31D
+          headers:
+            TOPOMS-API-KEY:
+              schema:
+                type: string
+              description: The API key to play the created game.
+    get:
+      tags:
+        - session
+      summary: get info about the game.
+      parameters: 
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: id of the game.
+      responses:
+        '200':
+          description: get game description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSession'
+        '404':
+          description: game not found.
+
+  /games/{id}/open:
+    post:
+      security: 
+        - ApiKeyAuth: []
+      tags:
+        - session
+      summary: represent user opening a minesweeper field.
+      parameters: 
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: id of the game
+        - in: query
+          name: index
+          required: true
+          schema:
+            type: integer
+          description: tile index from the map to be opened.
+      responses:
+        '200':
+          description: return a pair of index and value of the tiles that are opened. 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenTile'
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Unauthorized operations.
+        '404':
+          description: If the game session is not found.
+        
+components:
+  securitySchemes:
+    ApiKeyAuth: 
+      type: apiKey
+      in: header
+      name: TOPOMS-API-KEY
+      description: Api key obtained at game creation.
+  schemas:
+    OpenTile:
+      type: object
+      required:
+        - status
+        - opened
+      properties:
+        status:
+          type: string
+          enum: [started, playing, lose, win]
+        opened:
+          type: array
+          example: [[0, 1], [1, 5], [3, 4]]
+          items:
+            type: array
+            items:
+              type: integer
+    CreateMap:
+      type: array
+      items:
+        type: array
+        items:
+          type: integer
+    CreateGame:
+      type: object
+      properties:
+        numberOfMines:
+          type: integer
+        
+    GameSession:
+      type: object
+      required:
+        - createdAt
+        - mapId
+        - numberOfMines
+        - numberOfTiles
+        - revealedTiles
+        - status
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+          example: 2017-07-21T17:32:28Z
+        endedAt:
+          type: string
+          format: date-time
+          example: 2017-07-21T17:32:28Z
+        mapId:
+          type: string
+          example: asdf9kjldf72
+        numberOfMines:
+          type: integer
+          example: 64
+        numberOfTiles:
+          type: integer
+          example: 9
+        revealedTiles:
+          type: array
+          example: [[0, 1], [1, 5], [3, 4]]
+          items:
+            type: array
+            items:
+              type: integer
+        status:
+          type: string
+          enum: [started, playing ,lose, win]
+
